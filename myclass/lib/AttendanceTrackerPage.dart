@@ -4,7 +4,10 @@ import 'dart:convert';
 import 'qr_scanner_page.dart'; // Import the QRScannerPage file
 
 class AttendanceTrackerPage extends StatefulWidget {
+  const AttendanceTrackerPage({super.key});
+
   @override
+  // ignore: library_private_types_in_public_api
   _AttendanceTrackerPageState createState() => _AttendanceTrackerPageState();
 }
 
@@ -27,10 +30,11 @@ class _AttendanceTrackerPageState extends State<AttendanceTrackerPage> {
     final classData = classes.map((classInfo) {
       return {
         'className': classInfo.className,
-        'spreadsheetLink': classInfo.spreadsheetLink,
+        'scannedData': classInfo.scannedData,
       };
     }).toList();
-    await prefs.setStringList(classDataKey, classData.map((data) => jsonEncode(data)).toList());
+    await prefs.setStringList(
+        classDataKey, classData.map((data) => jsonEncode(data)).toList());
   }
 
   // Load class data from SharedPreferences
@@ -41,7 +45,10 @@ class _AttendanceTrackerPageState extends State<AttendanceTrackerPage> {
       setState(() {
         classes = classData.map((data) {
           final decodedData = jsonDecode(data);
-          return ClassInfo(decodedData['className'], decodedData['spreadsheetLink']);
+          return ClassInfo(
+            decodedData['className'],
+            decodedData['scannedData'] ?? '',
+          );
         }).toList();
       });
     }
@@ -52,10 +59,10 @@ class _AttendanceTrackerPageState extends State<AttendanceTrackerPage> {
       context: context,
       builder: (BuildContext context) {
         return AddClassForm(
-          onSubmit: (className, spreadsheetLink) {
+          onSubmit: (className) {
             setState(() {
-              classes.add(ClassInfo(className, spreadsheetLink));
-              _saveClassData(); // Save the updated data
+              classes.add(ClassInfo(className, ''));
+              _saveClassData();
             });
           },
         );
@@ -66,7 +73,27 @@ class _AttendanceTrackerPageState extends State<AttendanceTrackerPage> {
   void _deleteClass(int index) {
     setState(() {
       classes.removeAt(index);
-      _saveClassData(); // Save the updated data after deletion
+      _saveClassData();
+    });
+  }
+
+  // Function to open QR scanner and update scanned data
+  void _openQRScanner(BuildContext context, int index) async {
+    final scannedData = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => QRScannerPage()),
+    );
+
+    if (scannedData != null) {
+      _updateScannedData(index, scannedData);
+    }
+  }
+
+  // Update scanned data for a class
+  void _updateScannedData(int index, String scannedData) {
+    setState(() {
+      classes[index].scannedData = scannedData;
+      _saveClassData();
     });
   }
 
@@ -88,11 +115,11 @@ class _AttendanceTrackerPageState extends State<AttendanceTrackerPage> {
                   onDelete: () {
                     _deleteClass(index);
                   },
-                  onEdit: (newClassName, newSpreadsheetLink) {
-                    _editClass(index, newClassName, newSpreadsheetLink);
+                  onEdit: (newClassName) {
+                    _editClass(index, newClassName);
                   },
                   onScanQR: () {
-                    _openQRScanner(context);
+                    _openQRScanner(context, index);
                   },
                 );
               },
@@ -115,42 +142,25 @@ class _AttendanceTrackerPageState extends State<AttendanceTrackerPage> {
   }
 
   // Create a method to handle the edit action
-  void _editClass(int index, String className, String spreadsheetLink) {
+  void _editClass(int index, String className) {
     setState(() {
-      // Update the class information in the list
       classes[index].className = className;
-      classes[index].spreadsheetLink = spreadsheetLink;
-
-      // Save the updated data
       _saveClassData();
     });
-  }
-
-  // Function to open QR scanner
-  void _openQRScanner(BuildContext context) async {
-    final scannedData = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => QRScannerPage()),
-    );
-
-    if (scannedData != null) {
-      // Handle the scanned data, e.g., display it or process it as needed
-      print('Scanned QR Code: $scannedData');
-    }
   }
 }
 
 class ClassInfo {
   String className;
-  String spreadsheetLink;
+  String scannedData;
 
-  ClassInfo(this.className, this.spreadsheetLink);
+  ClassInfo(this.className, this.scannedData);
 }
 
 class ClassBox extends StatelessWidget {
   final ClassInfo classInfo;
   final VoidCallback onDelete;
-  final Function(String, String) onEdit;
+  final Function(String) onEdit;
   final VoidCallback onScanQR;
 
   ClassBox({
@@ -192,7 +202,8 @@ class ClassBox extends StatelessWidget {
                     onScanQR(); // Call the scan QR callback
                   }
                 },
-                itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                itemBuilder: (BuildContext context) =>
+                    <PopupMenuEntry<String>>[
                   const PopupMenuItem<String>(
                     value: 'edit',
                     child: Text('Edit'),
@@ -211,11 +222,16 @@ class ClassBox extends StatelessWidget {
                   ),
                   const PopupMenuItem<String>(
                     value: 'scanQR',
-                    child: Text('Scan QR Code'), // Add a custom menu item for QR scanner
+                    child: Text(
+                        'Scan QR Code'), // Add a custom menu item for QR scanner
                   ),
                 ],
               ),
             ],
+          ),
+          Text(
+            'Scanned Data: ${classInfo.scannedData}',
+            style: TextStyle(fontWeight: FontWeight.bold),
           ),
         ],
       ),
@@ -228,9 +244,8 @@ class ClassBox extends StatelessWidget {
       builder: (BuildContext context) {
         return EditClassDialog(
           initialClassName: classInfo.className,
-          initialSpreadsheetLink: classInfo.spreadsheetLink,
-          onSubmit: (newClassName, newSpreadsheetLink) {
-            onEdit(newClassName, newSpreadsheetLink);
+          onSubmit: (newClassName) {
+            onEdit(newClassName);
             Navigator.of(context).pop();
           },
         );
@@ -241,12 +256,10 @@ class ClassBox extends StatelessWidget {
 
 class EditClassDialog extends StatefulWidget {
   final String initialClassName;
-  final String initialSpreadsheetLink;
-  final Function(String className, String spreadsheetLink) onSubmit;
+  final Function(String) onSubmit;
 
   EditClassDialog({
     required this.initialClassName,
-    required this.initialSpreadsheetLink,
     required this.onSubmit,
   });
 
@@ -256,13 +269,11 @@ class EditClassDialog extends StatefulWidget {
 
 class _EditClassDialogState extends State<EditClassDialog> {
   TextEditingController classNameController = TextEditingController();
-  TextEditingController spreadsheetLinkController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     classNameController.text = widget.initialClassName;
-    spreadsheetLinkController.text = widget.initialSpreadsheetLink;
   }
 
   @override
@@ -276,10 +287,6 @@ class _EditClassDialogState extends State<EditClassDialog> {
             controller: classNameController,
             decoration: InputDecoration(labelText: 'Class Name'),
           ),
-          TextField(
-            controller: spreadsheetLinkController,
-            decoration: InputDecoration(labelText: 'Spreadsheet Link'),
-          ),
         ],
       ),
       actions: <Widget>[
@@ -292,8 +299,7 @@ class _EditClassDialogState extends State<EditClassDialog> {
         TextButton(
           onPressed: () {
             final className = classNameController.text;
-            final spreadsheetLink = spreadsheetLinkController.text;
-            widget.onSubmit(className, spreadsheetLink);
+            widget.onSubmit(className);
             Navigator.of(context).pop();
           },
           child: Text('Submit'),
@@ -304,7 +310,7 @@ class _EditClassDialogState extends State<EditClassDialog> {
 }
 
 class AddClassForm extends StatefulWidget {
-  final Function(String className, String spreadsheetLink) onSubmit;
+  final Function(String) onSubmit;
 
   AddClassForm({required this.onSubmit});
 
@@ -314,7 +320,6 @@ class AddClassForm extends StatefulWidget {
 
 class _AddClassFormState extends State<AddClassForm> {
   TextEditingController classNameController = TextEditingController();
-  TextEditingController spreadsheetLinkController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -327,10 +332,6 @@ class _AddClassFormState extends State<AddClassForm> {
             controller: classNameController,
             decoration: InputDecoration(labelText: 'Class Name'),
           ),
-          TextField(
-            controller: spreadsheetLinkController,
-            decoration: InputDecoration(labelText: 'Spreadsheet Link'),
-          ),
         ],
       ),
       actions: <Widget>[
@@ -343,8 +344,7 @@ class _AddClassFormState extends State<AddClassForm> {
         TextButton(
           onPressed: () {
             final className = classNameController.text;
-            final spreadsheetLink = spreadsheetLinkController.text;
-            widget.onSubmit(className, spreadsheetLink);
+            widget.onSubmit(className);
             Navigator.of(context).pop();
           },
           child: Text('Submit'),

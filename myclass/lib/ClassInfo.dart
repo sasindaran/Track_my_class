@@ -1,6 +1,6 @@
 class ClassInfo {
   String className;
-  String spreadsheetLink;
+  String scannedData;
 
-  ClassInfo(this.className, this.spreadsheetLink);
+  ClassInfo(this.className, this.scannedData);
 }

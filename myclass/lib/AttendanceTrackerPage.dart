@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'add_class_form.dart';
 import 'dart:convert';
-
-import 'edit_class_dialog.dart'; // Import the EditClassDialog file
+import 'qr_scanner_page.dart'; // Import the QRScannerPage file
 
 class AttendanceTrackerPage extends StatefulWidget {
   @override
@@ -79,19 +77,28 @@ class _AttendanceTrackerPageState extends State<AttendanceTrackerPage> {
         title: Text('Attendance Tracker'),
         backgroundColor: Color.fromARGB(255, 150, 235, 153),
       ),
-      body: ListView.builder(
-        itemCount: classes.length,
-        itemBuilder: (context, index) {
-          return ClassBox(
-            classInfo: classes[index],
-            onDelete: () {
-              _deleteClass(index);
-            },
-            onEdit: (newClassName, newSpreadsheetLink) {
-              _editClass(index, newClassName, newSpreadsheetLink);
-            },
-          );
-        },
+      body: Column(
+        children: <Widget>[
+          Expanded(
+            child: ListView.builder(
+              itemCount: classes.length,
+              itemBuilder: (context, index) {
+                return ClassBox(
+                  classInfo: classes[index],
+                  onDelete: () {
+                    _deleteClass(index);
+                  },
+                  onEdit: (newClassName, newSpreadsheetLink) {
+                    _editClass(index, newClassName, newSpreadsheetLink);
+                  },
+                  onScanQR: () {
+                    _openQRScanner(context);
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
@@ -118,6 +125,19 @@ class _AttendanceTrackerPageState extends State<AttendanceTrackerPage> {
       _saveClassData();
     });
   }
+
+  // Function to open QR scanner
+  void _openQRScanner(BuildContext context) async {
+    final scannedData = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => QRScannerPage()),
+    );
+
+    if (scannedData != null) {
+      // Handle the scanned data, e.g., display it or process it as needed
+      print('Scanned QR Code: $scannedData');
+    }
+  }
 }
 
 class ClassInfo {
@@ -131,8 +151,14 @@ class ClassBox extends StatelessWidget {
   final ClassInfo classInfo;
   final VoidCallback onDelete;
   final Function(String, String) onEdit;
+  final VoidCallback onScanQR;
 
-  ClassBox({required this.classInfo, required this.onDelete, required this.onEdit});
+  ClassBox({
+    required this.classInfo,
+    required this.onDelete,
+    required this.onEdit,
+    required this.onScanQR,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -143,41 +169,51 @@ class ClassBox extends StatelessWidget {
         border: Border.all(color: Color.fromARGB(255, 150, 235, 153)),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
         children: [
-          Text(
-            'Class Name: ${classInfo.className}',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          PopupMenuButton<String>(
-            onSelected: (value) {
-              if (value == 'edit') {
-                _showEditClassDialog(context);
-              } else if (value == 'view') {
-                // Implement the view action
-              } else if (value == 'export') {
-                // Implement the export action
-              } else if (value == 'delete') {
-                onDelete(); // Call the delete callback
-              }
-            },
-            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-              const PopupMenuItem<String>(
-                value: 'edit',
-                child: Text('Edit'),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Class Name: ${classInfo.className}',
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
-              const PopupMenuItem<String>(
-                value: 'view',
-                child: Text('View'),
-              ),
-              const PopupMenuItem<String>(
-                value: 'export',
-                child: Text('Export'),
-              ),
-              const PopupMenuItem<String>(
-                value: 'delete',
-                child: Text('Delete'),
+              PopupMenuButton<String>(
+                onSelected: (value) {
+                  if (value == 'edit') {
+                    _showEditClassDialog(context);
+                  } else if (value == 'view') {
+                    // Implement the view action
+                  } else if (value == 'export') {
+                    // Implement the export action
+                  } else if (value == 'delete') {
+                    onDelete(); // Call the delete callback
+                  } else if (value == 'scanQR') {
+                    onScanQR(); // Call the scan QR callback
+                  }
+                },
+                itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                  const PopupMenuItem<String>(
+                    value: 'edit',
+                    child: Text('Edit'),
+                  ),
+                  const PopupMenuItem<String>(
+                    value: 'view',
+                    child: Text('View'),
+                  ),
+                  const PopupMenuItem<String>(
+                    value: 'export',
+                    child: Text('Export'),
+                  ),
+                  const PopupMenuItem<String>(
+                    value: 'delete',
+                    child: Text('Delete'),
+                  ),
+                  const PopupMenuItem<String>(
+                    value: 'scanQR',
+                    child: Text('Scan QR Code'), // Add a custom menu item for QR scanner
+                  ),
+                ],
               ),
             ],
           ),
@@ -317,4 +353,3 @@ class _AddClassFormState extends State<AddClassForm> {
     );
   }
 }
-           

@@ -12,10 +12,12 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Flutter Demo',
       theme: ThemeData(
         // Segar Dir
-        colorScheme: ColorScheme.fromSeed(seedColor: Color.fromARGB(255, 150, 235, 153)),
+        colorScheme:
+            ColorScheme.fromSeed(seedColor: Color.fromARGB(255, 150, 235, 153)),
         useMaterial3: true,
       ),
       home: SplashScreen(),

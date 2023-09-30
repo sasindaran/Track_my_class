@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:myclass/database_helper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'qr_scanner_page.dart';
@@ -71,12 +72,25 @@ class _AttendanceTrackerPageState extends State<AttendanceTrackerPage> {
     );
   }
 
-  void _deleteClass(int index) {
+  void _deleteClass(int index) async {
+    final classNameToDelete = classes[index].className;
+
+    // Delete the class from the database
+    final dbHelper = DatabaseHelper();
+    await dbHelper.deleteClass(classNameToDelete);
+
     setState(() {
       classes.removeAt(index);
       _saveClassData();
     });
   }
+
+  // void _deleteClass(int index) {
+  //   setState(() {
+  //     classes.removeAt(index);
+  //     _saveClassData();
+  //   });
+  // }
 
   void _openQRScanner(BuildContext context, int index) async {
     final scannedData = await Navigator.push(

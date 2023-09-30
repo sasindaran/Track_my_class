@@ -10,6 +10,15 @@ class DatabaseHelper {
 
   DatabaseHelper._internal();
 
+  Future<void> deleteClass(String className) async {
+    final db = await database;
+    await db.delete(
+      'scanned_data',
+      where: 'className = ?',
+      whereArgs: [className],
+    );
+  }
+
   Future<Database> get database async {
     if (_database != null) {
       return _database!;

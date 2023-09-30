@@ -27,6 +27,33 @@ class DatabaseHelper {
     return _database!;
   }
 
+  Future<List<ScannedData>> getAttendanceForExport(
+      String className, DateTime? selectedDate) async {
+    final db = await database;
+    String whereClause = 'className = ?';
+    List<String> whereArgs = [className];
+
+    if (selectedDate != null) {
+      final formattedDate = DateFormat('yyyy-MM-dd').format(selectedDate);
+      whereClause += ' AND currentDate LIKE ?';
+      whereArgs.add('$formattedDate%');
+    }
+
+    final List<Map<String, dynamic>> maps = await db.query(
+      'scanned_data',
+      where: whereClause,
+      whereArgs: whereArgs,
+    );
+
+    return List.generate(maps.length, (i) {
+      return ScannedData(
+        className: maps[i]['className'],
+        registerNumber: maps[i]['registerNumber'],
+        currentDate: DateTime.parse(maps[i]['currentDate']),
+      );
+    });
+  }
+
   Future<Database> _initDatabase() async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, 'attendance.db');
@@ -72,50 +99,6 @@ class DatabaseHelper {
       );
     });
   }
-
-  // Future<List<ScannedData>> getAttendanceForDate(
-  //     DateTime date, String className) async {
-  //   final db = await database;
-  //   final formattedDate = DateFormat('yyyy-MM-dd').format(date);
-  //
-  //   final List<Map<String, dynamic>> maps = await db.query(
-  //     'scanned_data',
-  //     where: 'className = ? AND currentDate LIKE ?',
-  //     whereArgs: [className, '$formattedDate%'],
-  //   );
-  //
-  //   return List.generate(maps.length, (i) {
-  //     final name =
-  //         maps[i]['name'] ?? ''; // Provide a default value if 'name' is null
-  //     return ScannedData(
-  //       className: maps[i]['className'],
-  //       registerNumber: maps[i]['registerNumber'],
-  //       name: name,
-  //       currentDate: DateTime.parse(maps[i]['currentDate']),
-  //     );
-  //   });
-  // }
-
-  // Future<List<ScannedData>> getAttendanceForDate(
-  //     DateTime date, String className) async {
-  //   final db = await database;
-  //   final formattedDate = DateFormat('yyyy-MM-dd').format(date);
-  //
-  //   final List<Map<String, dynamic>> maps = await db.query(
-  //     'scanned_data',
-  //     where: 'className = ? AND currentDate LIKE ?',
-  //     whereArgs: [className, '$formattedDate%'],
-  //   );
-  //
-  //   return List.generate(maps.length, (i) {
-  //     return ScannedData(
-  //       className: maps[i]['className'],
-  //       registerNumber: maps[i]['registerNumber'],
-  //       name: maps[i]['name'], // Include the 'name' field
-  //       currentDate: DateTime.parse(maps[i]['currentDate']),
-  //     );
-  //   });
-  // }
 }
 
 class ScannedData {
@@ -131,6 +114,50 @@ class ScannedData {
     required this.currentDate,
   });
 }
+
+// Future<List<ScannedData>> getAttendanceForDate(
+//     DateTime date, String className) async {
+//   final db = await database;
+//   final formattedDate = DateFormat('yyyy-MM-dd').format(date);
+//
+//   final List<Map<String, dynamic>> maps = await db.query(
+//     'scanned_data',
+//     where: 'className = ? AND currentDate LIKE ?',
+//     whereArgs: [className, '$formattedDate%'],
+//   );
+//
+//   return List.generate(maps.length, (i) {
+//     final name =
+//         maps[i]['name'] ?? ''; // Provide a default value if 'name' is null
+//     return ScannedData(
+//       className: maps[i]['className'],
+//       registerNumber: maps[i]['registerNumber'],
+//       name: name,
+//       currentDate: DateTime.parse(maps[i]['currentDate']),
+//     );
+//   });
+// }
+
+// Future<List<ScannedData>> getAttendanceForDate(
+//     DateTime date, String className) async {
+//   final db = await database;
+//   final formattedDate = DateFormat('yyyy-MM-dd').format(date);
+//
+//   final List<Map<String, dynamic>> maps = await db.query(
+//     'scanned_data',
+//     where: 'className = ? AND currentDate LIKE ?',
+//     whereArgs: [className, '$formattedDate%'],
+//   );
+//
+//   return List.generate(maps.length, (i) {
+//     return ScannedData(
+//       className: maps[i]['className'],
+//       registerNumber: maps[i]['registerNumber'],
+//       name: maps[i]['name'], // Include the 'name' field
+//       currentDate: DateTime.parse(maps[i]['currentDate']),
+//     );
+//   });
+// }
 
 // import 'dart:async';
 // import 'package:intl/intl.dart';

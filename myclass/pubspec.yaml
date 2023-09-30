@@ -40,6 +40,8 @@ dependencies:
   intl: ^0.18.1
   csv: ^5.0.2
   path_provider: ^2.1.1
+  file_picker: ^5.5.0
+  permission_handler: ^11.0.0
 
 dev_dependencies:
   flutter_test:

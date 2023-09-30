@@ -1,3 +1,5 @@
+// This is the working code but exports on the intrior dir
+
 import 'dart:io';
 import 'package:csv/csv.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +10,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'qr_scanner_page.dart';
 import 'attendance_list_page.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:file_picker/file_picker.dart';
 
 class AttendanceTrackerPage extends StatefulWidget {
   const AttendanceTrackerPage({Key? key}) : super(key: key);
@@ -145,44 +149,6 @@ class _AttendanceTrackerPageState extends State<AttendanceTrackerPage> {
       }
     }
   }
-
-  // Export data to a CSV file
-  // Future<void> _exportData(String className, DateTime? selectedDate) async {
-  //   final dbHelper = DatabaseHelper();
-  //   final attendanceData =
-  //       await dbHelper.getAttendanceForExport(className, selectedDate);
-  //
-  //   if (attendanceData.isNotEmpty) {
-  //     final csvData = const ListToCsvConverter().convert(
-  //       attendanceData
-  //           .map((entry) => [
-  //                 entry.registerNumber,
-  //                 DateFormat('yyyy-MM-dd').format(entry.currentDate)
-  //               ])
-  //           .toList(),
-  //     );
-  //
-  //     final fileName = selectedDate != null
-  //         ? 'Export-${className}-${DateFormat('dd-MM-yy').format(selectedDate)}.csv'
-  //         : 'ExportAll-${className}-${DateFormat('dd-MM-yy-HH-mm').format(DateTime.now())}.csv';
-  //
-  //     final directory = await getExternalStorageDirectory();
-  //     final file = File('${directory!.path}/$fileName');
-  //     await file.writeAsString(csvData);
-  //
-  //     // Show a snackbar to indicate successful export
-  //     final snackBar = SnackBar(
-  //       content: Text('Exported data to $fileName'),
-  //     );
-  //     ScaffoldMessenger.of(context).showSnackBar(snackBar);
-  //   } else {
-  //     // Show a snackbar to indicate no data to export
-  //     final snackBar = SnackBar(
-  //       content: Text('No data to export for $className'),
-  //     );
-  //     ScaffoldMessenger.of(context).showSnackBar(snackBar);
-  //   }
-  // }
 
   // Save class data to SharedPreferences whenever it changes
   void _saveClassData() async {

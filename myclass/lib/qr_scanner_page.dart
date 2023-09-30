@@ -59,6 +59,9 @@ class _QRScannerPageState extends State<QRScannerPage> {
             onPressed: _onAcceptPressed,
             child: Text('Accept'), // Add an "Accept" button
           ),
+          SizedBox(
+            height: 70,
+          ),
         ],
       ),
     );

@@ -1,18 +1,28 @@
+// This is the working code but exports on the intrior dir
+
+import 'dart:io';
+import 'package:csv/csv.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:myclass/database_helper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
-import 'qr_scanner_page.dart'; // Import the QRScannerPage file
+import 'qr_scanner_page.dart';
+import 'attendance_list_page.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:file_picker/file_picker.dart';
 
 class AttendanceTrackerPage extends StatefulWidget {
-  const AttendanceTrackerPage({super.key});
+  const AttendanceTrackerPage({Key? key}) : super(key: key);
 
   @override
-  // ignore: library_private_types_in_public_api
   _AttendanceTrackerPageState createState() => _AttendanceTrackerPageState();
 }
 
 class _AttendanceTrackerPageState extends State<AttendanceTrackerPage> {
   List<ClassInfo> classes = [];
+  late String selectedClassName;
 
   // Define a key for storing class data in SharedPreferences
   static const String classDataKey = 'classData';
@@ -22,6 +32,122 @@ class _AttendanceTrackerPageState extends State<AttendanceTrackerPage> {
   void initState() {
     super.initState();
     _loadClassData();
+  }
+
+  Future<void> _exportData(String className) async {
+    final dbHelper = DatabaseHelper();
+
+    // Show a dialog to select the export type (all or specific date)
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Select Export Type'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              ElevatedButton(
+                onPressed: () async {
+                  // Export all data
+                  Navigator.of(context).pop();
+                  await _exportAllData(className);
+                },
+                child: Text('Export All'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  // Show a date picker to select a specific date
+                  Navigator.of(context).pop();
+                  await _selectAndExportSpecificDate(className);
+                },
+                child: Text('Export Specific Date'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _exportAllData(String className) async {
+    final dbHelper = DatabaseHelper();
+    final attendanceData =
+        await dbHelper.getAttendanceForExport(className, null);
+
+    if (attendanceData.isNotEmpty) {
+      final csvData = const ListToCsvConverter().convert(
+        attendanceData
+            .map((entry) => [
+                  entry.registerNumber,
+                  DateFormat('yyyy-MM-dd').format(entry.currentDate)
+                ])
+            .toList(),
+      );
+
+      final fileName =
+          'TMC-ExportAll-${className}-${DateFormat('dd-MM-yy-HH-mm').format(DateTime.now())}.csv';
+
+      final directory = await getExternalStorageDirectory();
+      final file = File('${directory!.path}/$fileName');
+      await file.writeAsString(csvData);
+
+      // Show a snackbar to indicate successful export
+      final snackBar = SnackBar(
+        content: Text('Exported data to $fileName'),
+      );
+      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+    } else {
+      // Show a snackbar to indicate no data to export
+      final snackBar = SnackBar(
+        content: Text('No data to export for $className'),
+      );
+      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+    }
+  }
+
+  Future<void> _selectAndExportSpecificDate(String className) async {
+    final DateTime? selectedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+    );
+
+    if (selectedDate != null) {
+      final dbHelper = DatabaseHelper();
+      final attendanceData =
+          await dbHelper.getAttendanceForExport(className, selectedDate);
+
+      if (attendanceData.isNotEmpty) {
+        final csvData = const ListToCsvConverter().convert(
+          attendanceData
+              .map((entry) => [
+                    entry.registerNumber,
+                    DateFormat('yyyy-MM-dd').format(entry.currentDate)
+                  ])
+              .toList(),
+        );
+
+        final fileName =
+            'TMC-Export-${className}-${DateFormat('dd-MM-yy').format(selectedDate)}.csv';
+
+        final directory = await getExternalStorageDirectory();
+        final file = File('${directory!.path}/$fileName');
+        await file.writeAsString(csvData);
+
+        // Show a snackbar to indicate successful export
+        final snackBar = SnackBar(
+          content: Text('Exported data to $fileName'),
+        );
+        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      } else {
+        // Show a snackbar to indicate no data to export
+        final snackBar = SnackBar(
+          content: Text('No data to export for $className on $selectedDate'),
+        );
+        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      }
+    }
   }
 
   // Save class data to SharedPreferences whenever it changes
@@ -70,18 +196,26 @@ class _AttendanceTrackerPageState extends State<AttendanceTrackerPage> {
     );
   }
 
-  void _deleteClass(int index) {
+  void _deleteClass(int index) async {
+    final classNameToDelete = classes[index].className;
+
+    // Delete the class from the database
+    final dbHelper = DatabaseHelper();
+    await dbHelper.deleteClass(classNameToDelete);
+
     setState(() {
       classes.removeAt(index);
       _saveClassData();
     });
   }
 
-  // Function to open QR scanner and update scanned data
   void _openQRScanner(BuildContext context, int index) async {
     final scannedData = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => QRScannerPage()),
+      MaterialPageRoute(
+        builder: (context) =>
+            QRScannerPage(className: classes[index].className),
+      ),
     );
 
     if (scannedData != null) {
@@ -89,12 +223,33 @@ class _AttendanceTrackerPageState extends State<AttendanceTrackerPage> {
     }
   }
 
-  // Update scanned data for a class
   void _updateScannedData(int index, String scannedData) {
     setState(() {
       classes[index].scannedData = scannedData;
       _saveClassData();
     });
+  }
+
+  void _showViewAttendancePage(BuildContext context, String className) async {
+    final DateTime? selectedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+    );
+
+    if (selectedDate != null) {
+      // Redirect to the AttendanceListPage with the selected date and class name
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => AttendanceListPage(
+            selectedDate: selectedDate,
+            className: className,
+          ),
+        ),
+      );
+    }
   }
 
   @override
@@ -121,6 +276,12 @@ class _AttendanceTrackerPageState extends State<AttendanceTrackerPage> {
                   onScanQR: () {
                     _openQRScanner(context, index);
                   },
+                  onView: () {
+                    _showViewAttendancePage(context, classes[index].className);
+                  },
+                  onExport: () {
+                    _exportData(classes[index].className); // Export all data
+                  },
                 );
               },
             ),
@@ -138,15 +299,26 @@ class _AttendanceTrackerPageState extends State<AttendanceTrackerPage> {
         ),
         backgroundColor: Colors.white,
       ),
+      // floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 
-  // Create a method to handle the edit action
+  void restartApp(BuildContext context) {
+    runApp(
+      MaterialApp(
+        home: AttendanceTrackerPage(),
+      ),
+    );
+  }
+
   void _editClass(int index, String className) {
+    print('Editing class: $className');
+
     setState(() {
       classes[index].className = className;
       _saveClassData();
     });
+    restartApp(context);
   }
 }
 
@@ -162,12 +334,16 @@ class ClassBox extends StatelessWidget {
   final VoidCallback onDelete;
   final Function(String) onEdit;
   final VoidCallback onScanQR;
+  final VoidCallback onView; // Added callback for "View" action
+  final VoidCallback onExport; // Added callback for "Export" action
 
   ClassBox({
     required this.classInfo,
     required this.onDelete,
     required this.onEdit,
     required this.onScanQR,
+    required this.onView,
+    required this.onExport,
   });
 
   @override
@@ -193,17 +369,16 @@ class ClassBox extends StatelessWidget {
                   if (value == 'edit') {
                     _showEditClassDialog(context);
                   } else if (value == 'view') {
-                    // Implement the view action
+                    onView(); // Call the "View" callback
                   } else if (value == 'export') {
-                    // Implement the export action
+                    onExport(); // Call the "Export" callback
                   } else if (value == 'delete') {
-                    onDelete(); // Call the delete callback
+                    onDelete();
                   } else if (value == 'scanQR') {
-                    onScanQR(); // Call the scan QR callback
+                    onScanQR();
                   }
                 },
-                itemBuilder: (BuildContext context) =>
-                    <PopupMenuEntry<String>>[
+                itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
                   const PopupMenuItem<String>(
                     value: 'edit',
                     child: Text('Edit'),
@@ -222,16 +397,11 @@ class ClassBox extends StatelessWidget {
                   ),
                   const PopupMenuItem<String>(
                     value: 'scanQR',
-                    child: Text(
-                        'Scan QR Code'), // Add a custom menu item for QR scanner
+                    child: Text('Scan QR Code'),
                   ),
                 ],
               ),
             ],
-          ),
-          Text(
-            'Scanned Data: ${classInfo.scannedData}',
-            style: TextStyle(fontWeight: FontWeight.bold),
           ),
         ],
       ),

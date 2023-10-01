@@ -57,8 +57,30 @@ class _QRScannerPageState extends State<QRScannerPage> {
           ),
           ElevatedButton(
             onPressed: _onAcceptPressed,
-            child: Text('Accept'), // Add an "Accept" button
+            style: ElevatedButton.styleFrom(
+                // Add styling here as needed
+                ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.check, // Add the tick mark icon here
+                  // color: Colors.white, // Customize the color of the icon
+                ),
+                SizedBox(
+                    width: 8), // Add some spacing between the icon and text
+                Text(
+                  'Accept',
+                  // style: TextStyle(fontSize: 16),
+                ),
+              ],
+            ),
           ),
+
+          // ElevatedButton(
+          //   onPressed: _onAcceptPressed,
+          //   child: Text('Accept'), // Add an "Accept" button
+          // ),
           SizedBox(
             height: 70,
           ),

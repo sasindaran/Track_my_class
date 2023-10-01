@@ -5,13 +5,14 @@ import 'package:csv/csv.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:myclass/database_helper.dart';
+import 'package:trackmyclass_pa/database_helper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'qr_scanner_page.dart';
 import 'attendance_list_page.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:share/share.dart';
 
 class AttendanceTrackerPage extends StatefulWidget {
   const AttendanceTrackerPage({Key? key}) : super(key: key);
@@ -91,6 +92,9 @@ class _AttendanceTrackerPageState extends State<AttendanceTrackerPage> {
       final file = File('${directory!.path}/$fileName');
       await file.writeAsString(csvData);
 
+      // Share the exported file
+      Share.shareFiles([file.path], text: 'Exported data for $className');
+
       // Show a snackbar to indicate successful export
       final snackBar = SnackBar(
         content: Text('Exported data to $fileName'),
@@ -135,6 +139,11 @@ class _AttendanceTrackerPageState extends State<AttendanceTrackerPage> {
         final file = File('${directory!.path}/$fileName');
         await file.writeAsString(csvData);
 
+        // Share the exported file
+        Share.shareFiles([file.path],
+            text:
+                'Exported data for $className on ${DateFormat('dd-MM-yy').format(selectedDate)}');
+
         // Show a snackbar to indicate successful export
         final snackBar = SnackBar(
           content: Text('Exported data to $fileName'),
@@ -149,6 +158,86 @@ class _AttendanceTrackerPageState extends State<AttendanceTrackerPage> {
       }
     }
   }
+  // Future<void> _exportAllData(String className) async {
+  //   final dbHelper = DatabaseHelper();
+  //   final attendanceData =
+  //       await dbHelper.getAttendanceForExport(className, null);
+  //
+  //   if (attendanceData.isNotEmpty) {
+  //     final csvData = const ListToCsvConverter().convert(
+  //       attendanceData
+  //           .map((entry) => [
+  //                 entry.registerNumber,
+  //                 DateFormat('yyyy-MM-dd').format(entry.currentDate)
+  //               ])
+  //           .toList(),
+  //     );
+  //
+  //     final fileName =
+  //         'TMC-ExportAll-${className}-${DateFormat('dd-MM-yy-HH-mm').format(DateTime.now())}.csv';
+  //
+  //     final directory = await getExternalStorageDirectory();
+  //     final file = File('${directory!.path}/$fileName');
+  //     await file.writeAsString(csvData);
+  //
+  //     // Show a snackbar to indicate successful export
+  //     final snackBar = SnackBar(
+  //       content: Text('Exported data to $fileName'),
+  //     );
+  //     ScaffoldMessenger.of(context).showSnackBar(snackBar);
+  //   } else {
+  //     // Show a snackbar to indicate no data to export
+  //     final snackBar = SnackBar(
+  //       content: Text('No data to export for $className'),
+  //     );
+  //     ScaffoldMessenger.of(context).showSnackBar(snackBar);
+  //   }
+  // }
+  //
+  // Future<void> _selectAndExportSpecificDate(String className) async {
+  //   final DateTime? selectedDate = await showDatePicker(
+  //     context: context,
+  //     initialDate: DateTime.now(),
+  //     firstDate: DateTime(2020),
+  //     lastDate: DateTime(2030),
+  //   );
+  //
+  //   if (selectedDate != null) {
+  //     final dbHelper = DatabaseHelper();
+  //     final attendanceData =
+  //         await dbHelper.getAttendanceForExport(className, selectedDate);
+  //
+  //     if (attendanceData.isNotEmpty) {
+  //       final csvData = const ListToCsvConverter().convert(
+  //         attendanceData
+  //             .map((entry) => [
+  //                   entry.registerNumber,
+  //                   DateFormat('yyyy-MM-dd').format(entry.currentDate)
+  //                 ])
+  //             .toList(),
+  //       );
+  //
+  //       final fileName =
+  //           'TMC-Export-${className}-${DateFormat('dd-MM-yy').format(selectedDate)}.csv';
+  //
+  //       final directory = await getExternalStorageDirectory();
+  //       final file = File('${directory!.path}/$fileName');
+  //       await file.writeAsString(csvData);
+  //
+  //       // Show a snackbar to indicate successful export
+  //       final snackBar = SnackBar(
+  //         content: Text('Exported data to $fileName'),
+  //       );
+  //       ScaffoldMessenger.of(context).showSnackBar(snackBar);
+  //     } else {
+  //       // Show a snackbar to indicate no data to export
+  //       final snackBar = SnackBar(
+  //         content: Text('No data to export for $className on $selectedDate'),
+  //       );
+  //       ScaffoldMessenger.of(context).showSnackBar(snackBar);
+  //     }
+  //   }
+  // }
 
   // Save class data to SharedPreferences whenever it changes
   void _saveClassData() async {
@@ -256,8 +345,12 @@ class _AttendanceTrackerPageState extends State<AttendanceTrackerPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Attendance Tracker'),
+        title: Text('Track My Class'),
         backgroundColor: Color.fromARGB(255, 150, 235, 153),
+        leading: Icon(
+          Icons.assignment, // Replace with your desired icon
+          // color: Colors.white, // Customize the color of the icon
+        ),
       ),
       body: Column(
         children: <Widget>[
@@ -348,65 +441,120 @@ class ClassBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(16),
+    return Card(
+      elevation: 4.0, // Add elevation for a card-like appearance
       margin: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        border: Border.all(color: Color.fromARGB(255, 150, 235, 153)),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Class Name: ${classInfo.className}',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              PopupMenuButton<String>(
-                onSelected: (value) {
-                  if (value == 'edit') {
-                    _showEditClassDialog(context);
-                  } else if (value == 'view') {
-                    onView(); // Call the "View" callback
-                  } else if (value == 'export') {
-                    onExport(); // Call the "Export" callback
-                  } else if (value == 'delete') {
-                    onDelete();
-                  } else if (value == 'scanQR') {
-                    onScanQR();
-                  }
-                },
-                itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                  const PopupMenuItem<String>(
-                    value: 'edit',
-                    child: Text('Edit'),
-                  ),
-                  const PopupMenuItem<String>(
-                    value: 'view',
-                    child: Text('View'),
-                  ),
-                  const PopupMenuItem<String>(
-                    value: 'export',
-                    child: Text('Export'),
-                  ),
-                  const PopupMenuItem<String>(
-                    value: 'delete',
-                    child: Text('Delete'),
-                  ),
-                  const PopupMenuItem<String>(
-                    value: 'scanQR',
-                    child: Text('Scan QR Code'),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ],
+      child: ListTile(
+        contentPadding: EdgeInsets.all(16),
+        leading: Icon(
+          Icons.class_outlined, // Replace with your desired class-related icon
+          // color: Colors.blue, // Customize the color of the icon
+          // size: 24.0, // Customize the size of the icon
+        ),
+        title: Text(
+          'Class Name: ${classInfo.className}',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        trailing: PopupMenuButton<String>(
+          onSelected: (value) {
+            if (value == 'edit') {
+              _showEditClassDialog(context);
+            } else if (value == 'view') {
+              onView();
+            } else if (value == 'export') {
+              onExport();
+            } else if (value == 'delete') {
+              onDelete();
+            } else if (value == 'scanQR') {
+              onScanQR();
+            }
+          },
+          itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+            const PopupMenuItem<String>(
+              value: 'edit',
+              child: Text('Edit'),
+            ),
+            const PopupMenuItem<String>(
+              value: 'view',
+              child: Text('View'),
+            ),
+            const PopupMenuItem<String>(
+              value: 'export',
+              child: Text('Export'),
+            ),
+            const PopupMenuItem<String>(
+              value: 'delete',
+              child: Text('Delete'),
+            ),
+            const PopupMenuItem<String>(
+              value: 'scanQR',
+              child: Text('Scan QR Code'),
+            ),
+          ],
+        ),
       ),
     );
   }
+  // Widget build(BuildContext context) {
+  //   return Container(
+  //     padding: EdgeInsets.all(16),
+  //     margin: EdgeInsets.all(16),
+  //     decoration: BoxDecoration(
+  //       border: Border.all(color: Color.fromARGB(255, 150, 235, 153)),
+  //       borderRadius: BorderRadius.circular(8),
+  //     ),
+  //     child: Column(
+  //       children: [
+  //         Row(
+  //           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  //           children: [
+  //             Text(
+  //               'Class Name: ${classInfo.className}',
+  //               style: TextStyle(fontWeight: FontWeight.bold),
+  //             ),
+  //             PopupMenuButton<String>(
+  //               onSelected: (value) {
+  //                 if (value == 'edit') {
+  //                   _showEditClassDialog(context);
+  //                 } else if (value == 'view') {
+  //                   onView(); // Call the "View" callback
+  //                 } else if (value == 'export') {
+  //                   onExport(); // Call the "Export" callback
+  //                 } else if (value == 'delete') {
+  //                   onDelete();
+  //                 } else if (value == 'scanQR') {
+  //                   onScanQR();
+  //                 }
+  //               },
+  //               itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+  //                 const PopupMenuItem<String>(
+  //                   value: 'edit',
+  //                   child: Text('Edit'),
+  //                 ),
+  //                 const PopupMenuItem<String>(
+  //                   value: 'view',
+  //                   child: Text('View'),
+  //                 ),
+  //                 const PopupMenuItem<String>(
+  //                   value: 'export',
+  //                   child: Text('Export'),
+  //                 ),
+  //                 const PopupMenuItem<String>(
+  //                   value: 'delete',
+  //                   child: Text('Delete'),
+  //                 ),
+  //                 const PopupMenuItem<String>(
+  //                   value: 'scanQR',
+  //                   child: Text('Scan QR Code'),
+  //                 ),
+  //               ],
+  //             ),
+  //           ],
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   void _showEditClassDialog(BuildContext context) {
     showDialog(

@@ -17,7 +17,8 @@ class _SplashScreenState extends State<SplashScreen> {
       () {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
-            builder: (_) => AttendanceTrackerPage(), // Replace with your main screen widget
+            builder: (_) =>
+                AttendanceTrackerPage(), // Replace with your main screen widget
           ),
         );
       },
@@ -27,10 +28,11 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor:Color.fromARGB(255, 150, 235, 153), // Facebook blue color
+      backgroundColor:
+          Color.fromARGB(255, 150, 235, 153), // Facebook blue color
       body: Center(
         child: Text(
-          'Track my class',
+          'Track My Class',
           style: TextStyle(
             fontSize: 24.0,
             color: Color.fromARGB(255, 255, 255, 255),

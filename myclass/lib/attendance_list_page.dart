@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-// import 'package:myclass/qr_scanner_page.dart';
 import 'database_helper.dart';
 
 class AttendanceListPage extends StatelessWidget {
